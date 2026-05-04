@@ -19,7 +19,7 @@ PBAnalytics/
 │   ├── import_csv.py         # CLI tool to bulk-import CSV data
 │   ├── requirements.txt      # Python dependencies
 │   ├── model/
-│   │   └── best.pt           # Trained YOLO model weights
+│   │   └── best.pt           # Trained YOLO model weights (2MB)
 │   ├── routes/
 │   │   ├── contacts.py       # GET/POST/PUT/DELETE /contacts
 │   │   ├── calls.py          # GET /calls and /calls/stats
@@ -31,21 +31,26 @@ PBAnalytics/
 │       ├── cleaner.py        # Data cleaning and normalisation logic
 │       ├── favourites.py     # Favourites scoring algorithm
 │       └── ai_classifier.py  # YOLO model loading and inference
-└── ai/                       # Model training pipeline
+├── ai/                       # ML training pipeline
 │   ├── preprocess.py         # Data cleaning, augmentation, and dataset splitting
 │   ├── train.py              # YOLOv8 training script
-│   └── raw_images/           # Source images organised by class
-│       ├── saudi_formal/
-│       ├── casual/
-│       └── not_human/
+│   ├── evaluate.py           # Model evaluation and performance metrics
+│   ├── dataset/              # Preprocessed dataset (70/20/10 split) — included for reproducibility
+│   │   ├── train.cache
+│   │   ├── valid.cache
+│   │   └── test.cache
+│   ├── yolov8n-cls.pt        # Base YOLOv8n model
+│   ├── mlflow.db             # Training experiment logs
+│   └── runs/                 # Training artifacts (git-ignored, regenerated during retraining)
 ├── frontend/                 # Vue 3 frontend
 │   └── src/
 │       ├── views/            # Dashboard, Contacts, Favourites, CallHistory, ImportCSV
 │       ├── api/index.js      # Central Axios API layer
 │       └── router/index.js   # Vue Router configuration
-└── data/
-    ├── contacts_data.csv     # Sample contacts CSV
-    └── calls_history.csv     # Sample call history CSV
+├── data/
+│   ├── contacts_data.csv     # Sample contacts CSV
+│   └── calls_history.csv     # Sample call history CSV
+└── README.md                 # This file
 ```
 
 ---
@@ -84,7 +89,7 @@ Create a `.env` file inside the `backend/` folder:
 DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/phonebook
 ```
 
-> Never commit your `.env` file. It is already listed in `.gitignore`.
+> **Never commit your `.env` file.** It is already listed in `.gitignore`.
 
 Start the API server:
 
@@ -92,7 +97,7 @@ Start the API server:
 uvicorn main:app --reload --port 8000
 ```
 
-The API will be available at **http://localhost:8000**
+The API will be available at **http://localhost:8000**  
 Interactive API docs (Swagger UI) at **http://localhost:8000/docs**
 
 ### 3. Import sample data
@@ -110,6 +115,7 @@ This will clean, normalise, and bulk-insert both datasets. You will see a summar
 Your CSV files must use these exact column names:
 
 **contacts CSV:**
+
 | Column | Example |
 |--------|---------|
 | `id` | 1 |
@@ -121,6 +127,7 @@ Your CSV files must use these exact column names:
 | `notes` | Work colleague |
 
 **calls CSV:**
+
 | Column | Example |
 |--------|---------|
 | `call_id` | C001 |
@@ -207,7 +214,7 @@ Full interactive documentation available at **http://localhost:8000/docs** when 
 
 ## AI Module
 
-The AI module classifies contact profile photos into three categories: Saudi formal clothing, casual clothing, and not human. Every classification is stored in the database alongside the compressed image, prediction, confidence score, and timestamp.
+The AI module classifies contact profile photos into three categories: **Saudi formal clothing**, **casual clothing**, and **not human**. Every classification is stored in the database alongside the compressed image, prediction, confidence score, and timestamp.
 
 ### How it works
 
@@ -215,21 +222,22 @@ An uploaded image passes through a YOLOv8n-cls model layer by layer. Early layer
 
 ### Training the model
 
-To retrain on new data, first delete the existing `ai/dataset/` and `ai/runs/` folders, then run:
+The training pipeline is included for reproducibility. The preprocessed dataset (50MB) is committed to the repo for easy setup.
 
 ```bash
 cd ai
-python preprocess.py
-python train.py
+python preprocess.py     # Resizes images to 224x224, splits 70/20/10, generates augmented versions
+python train.py          # Fine-tunes YOLOv8n-cls and saves best weights
+python evaluate.py       # Evaluates model on test set and generates metrics
 ```
 
-`preprocess.py` resizes all images to 224x224, splits them 70/20/10 across train, validation, and test sets, and generates 3 augmented versions of each training image. `train.py` fine-tunes YOLOv8n-cls on the resulting dataset and saves the best weights automatically.
-
-After training, copy the model to the backend:
+After successful training, copy the model to the backend:
 
 ```bash
 cp runs/classify/runs/classify/run1/weights/best.pt ../backend/model/best.pt
 ```
+
+Then commit and push the updated weights to GitHub.
 
 ### Model performance
 
@@ -243,6 +251,12 @@ cp runs/classify/runs/classify/run1/weights/best.pt ../backend/model/best.pt
 | Inference speed | 5.2ms per image |
 | Epochs to converge | 6 |
 | Transfer learning | ImageNet pretrained (156/158 layers) |
+
+### What's in the repo
+
+- **Included:** `preprocess.py`, `train.py`, `evaluate.py`, preprocessed `dataset/`, base `yolov8n-cls.pt`, trained `best.pt` (2MB)
+- **Git-ignored:** `ai/runs/` (training artifacts), raw images (use cloud storage)
+- **Why:** Dataset + trained weights are small enough and necessary for deployment. Training artifacts are regenerated during retraining.
 
 ---
 
@@ -296,3 +310,17 @@ npm run build
 ```
 
 Output will be in `frontend/dist/`. Serve it with any static file server or configure FastAPI to serve it directly.
+
+---
+
+## Git Workflow
+
+The repo includes a `.gitignore` that excludes:
+- Python virtual environments and cache
+- Node modules and build artifacts
+- Environment variables (`.env`)
+- IDE settings (`.vscode/`, `.idea/`)
+- Training artifacts (`ai/runs/`)
+- Large files (images, zip files)
+
+The preprocessed dataset and trained model weights are committed because they're essential for reproducibility and deployment.
