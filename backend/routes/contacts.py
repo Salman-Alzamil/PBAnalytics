@@ -90,8 +90,27 @@ def update_contact_picture(contact_id: int, update_data: ProfilePictureUpdate, d
     contact = db.query(Contact).filter(Contact.id == contact_id).first()
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
-    
+
     contact.profile_picture_id = update_data.profile_picture_id
     db.commit()
     db.refresh(contact)
     return contact
+
+@router.delete("/{contact_id}/picture", status_code=204)
+def delete_contact_picture(contact_id: int, db: Session = Depends(get_db)):
+    from models import UploadedImage
+    contact = db.query(Contact).filter(Contact.id == contact_id).first()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    image_id = contact.profile_picture_id
+    contact.profile_picture_id = None
+    db.commit()
+
+    if image_id:
+        image = db.query(UploadedImage).filter(UploadedImage.id == image_id).first()
+        if image:
+            db.delete(image)
+            db.commit()
+
+    return Response()

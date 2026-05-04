@@ -123,6 +123,29 @@
           </div>
         </div>
 
+        <!-- Profile picture delete -->
+        <div v-if="selectedContact.profile_picture_id" class="pic-delete-row">
+          <template v-if="!confirmDeletePic">
+            <button class="ghost pic-delete-btn" @click="confirmDeletePic = true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/>
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+              </svg>
+              Remove photo
+            </button>
+          </template>
+          <template v-else>
+            <span class="pic-delete-confirm-text">Remove this profile photo?</span>
+            <button class="pic-confirm-btn" @click="deletePicture" :disabled="deletingPic">
+              <span v-if="deletingPic" class="btn-spinner btn-spinner-light" />
+              {{ deletingPic ? 'Removing…' : 'Confirm' }}
+            </button>
+            <button class="ghost" @click="confirmDeletePic = false" :disabled="deletingPic">Cancel</button>
+          </template>
+        </div>
+
         <!-- Details -->
         <div
           v-if="selectedContact.email || selectedContact.city"
@@ -345,25 +368,29 @@ const prevPage     = () => { if (page.value > 1) page.value-- }
 onMounted(fetchContacts)
 
 // ── Drawer ─────────────────────────────────────────────────────
-const drawerOpen      = ref(false)
-const selectedContact = ref(null)
-const fileInput       = ref(null)
-const dropActive      = ref(false)
-const selectedFile    = ref(null)
-const previewUrl      = ref(null)
-const classifying     = ref(false)
-const classifyResult  = ref(null)
+const drawerOpen       = ref(false)
+const selectedContact  = ref(null)
+const fileInput        = ref(null)
+const dropActive       = ref(false)
+const selectedFile     = ref(null)
+const previewUrl       = ref(null)
+const classifying      = ref(false)
+const classifyResult   = ref(null)
+const confirmDeletePic = ref(false)
+const deletingPic      = ref(false)
 
 function openContact(c) {
-  selectedContact.value = c
-  classifyResult.value  = null
-  drawerOpen.value      = true
+  selectedContact.value  = c
+  classifyResult.value   = null
+  confirmDeletePic.value = false
+  drawerOpen.value       = true
 }
 
 function closeDrawer() {
   drawerOpen.value = false
   setTimeout(() => {
-    selectedContact.value = null
+    selectedContact.value  = null
+    confirmDeletePic.value = false
     clearImage()
   }, 300)
 }
@@ -382,6 +409,23 @@ function setFile(file) {
 
 function onFileDrop(e)  { dropActive.value = false; setFile(e.dataTransfer?.files?.[0]) }
 function onFileChange(e){ setFile(e.target?.files?.[0]) }
+
+async function deletePicture() {
+  if (!selectedContact.value || deletingPic.value) return
+  deletingPic.value = true
+  try {
+    await api.deleteContactPicture(selectedContact.value.id)
+    selectedContact.value.profile_picture_id = null
+    const idx = allContacts.value.findIndex(c => c.id === selectedContact.value.id)
+    if (idx !== -1) allContacts.value[idx].profile_picture_id = null
+    confirmDeletePic.value = false
+    addToast('success', 'Profile photo removed')
+  } catch {
+    addToast('danger', 'Failed to remove photo — please try again')
+  } finally {
+    deletingPic.value = false
+  }
+}
 
 function clearImage() {
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
@@ -590,6 +634,55 @@ function addToast(type, message) {
   color: var(--text-strong);
   text-align: right;
   word-break: break-word;
+}
+
+/* ── Profile picture delete ── */
+.pic-delete-row {
+  padding: 0 20px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pic-delete-btn {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  transition: color 0.15s;
+}
+
+.pic-delete-btn:hover { color: var(--danger); }
+
+.pic-delete-confirm-text {
+  font-size: 12px;
+  color: var(--text-strong);
+  flex-shrink: 0;
+}
+
+.pic-confirm-btn {
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  transition: opacity 0.15s;
+}
+
+.pic-confirm-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-spinner-light {
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
 }
 
 /* ── Separator ── */

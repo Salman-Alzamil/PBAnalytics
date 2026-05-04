@@ -20,6 +20,8 @@ export const api = {
 
   updateContactPicture: (id, profile_picture_id) => http.patch(`/contacts/${id}/picture`, { profile_picture_id }),
 
+  deleteContactPicture: (id) => http.delete(`/contacts/${id}/picture`),
+
   getDuplicates: () => http.get('/contacts/duplicates'),
 
   getCalls: (params) => http.get('/calls', { params }),
