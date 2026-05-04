@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+pydantic[email]
+python-dotenv
+pandas
+ultralytics
+mlflow
+dvc
+pillow
+python-multipart
