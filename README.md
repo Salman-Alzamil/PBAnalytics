@@ -19,28 +19,33 @@ PBAnalytics/
 │   ├── import_csv.py         # CLI tool to bulk-import CSV data
 │   ├── requirements.txt      # Python dependencies
 │   ├── model/
-│   │   └── best.pt           # Trained YOLO model weights (2MB)
+│   │   ├── active_model.json # Tracks which checkpoint is currently active
+│   │   ├── best.pt           # v1.0 trained weights (2MB)
+│   │   └── v2.0/             # v2.0 checkpoints (created by publish_model.py)
+│   │       ├── best.pt
+│   │       ├── epoch15.pt    # example periodic checkpoint
+│   │       └── ...
 │   ├── routes/
 │   │   ├── contacts.py       # GET/POST/PUT/DELETE /contacts
 │   │   ├── calls.py          # GET /calls and /calls/stats
 │   │   ├── favourites.py     # GET /favourites
 │   │   ├── dashboard.py      # GET /dashboard/summary
 │   │   ├── import_csv.py     # POST /import/contacts and /import/calls
-│   │   └── ai.py             # POST /ai/classify, GET /ai/images
+│   │   └── ai.py             # POST /ai/classify, GET /ai/images, model management
 │   └── utils/
 │       ├── cleaner.py        # Data cleaning and normalisation logic
 │       ├── favourites.py     # Favourites scoring algorithm
-│       └── ai_classifier.py  # YOLO model loading and inference
+│       └── ai_classifier.py  # YOLO model loading, inference, and hot-reload
 ├── ai/                       # ML training pipeline
 │   ├── preprocess.py         # Data cleaning, augmentation, and dataset splitting
-│   ├── train.py              # YOLOv8 training script
-│   ├── evaluate.py           # Model evaluation and performance metrics
+│   ├── train.py              # YOLOv8 training script with per-class diagnostics
+│   ├── evaluate.py           # Per-class accuracy, confusion matrix (accepts --model flag)
+│   ├── publish_model.py      # Copy a checkpoint to backend/model/ and set it active
 │   ├── dataset/              # Preprocessed dataset (70/20/10 split) — included for reproducibility
 │   │   ├── train.cache
 │   │   ├── valid.cache
 │   │   └── test.cache
 │   ├── yolov8n-cls.pt        # Base YOLOv8n model
-│   ├── mlflow.db             # Training experiment logs
 │   └── runs/                 # Training artifacts (git-ignored, regenerated during retraining)
 ├── frontend/                 # Vue 3 frontend
 │   └── src/
@@ -207,6 +212,9 @@ The app will be available at **http://localhost:5173**
 | POST | `/ai/classify` | Classify an uploaded image |
 | GET | `/ai/images` | List all previously classified images |
 | GET | `/ai/images/{id}` | Retrieve a stored image by ID |
+| GET | `/ai/models` | List all available .pt checkpoint files |
+| GET | `/ai/model/info` | Show which checkpoint is currently loaded |
+| POST | `/ai/model/select` | Switch the active checkpoint without restarting |
 
 Full interactive documentation available at **http://localhost:8000/docs** when the server is running.
 
@@ -222,41 +230,65 @@ An uploaded image passes through a YOLOv8n-cls model layer by layer. Early layer
 
 ### Training the model
 
-The training pipeline is included for reproducibility. The preprocessed dataset (50MB) is committed to the repo for easy setup.
+The training pipeline is included for reproducibility. The preprocessed dataset is committed to the repo for easy setup.
 
 ```bash
 cd ai
-python preprocess.py     # Resizes images to 224x224, splits 70/20/10, generates augmented versions
-python train.py          # Fine-tunes YOLOv8n-cls and saves best weights
-python evaluate.py       # Evaluates model on test set and generates metrics
+python preprocess.py     # Resize to 224×224, split 70/20/10, generate augmented versions
+python train.py          # Fine-tune YOLOv8n-cls — saves best.pt, last.pt, and epoch*.pt every 5 epochs
+python evaluate.py       # Per-class accuracy + confusion matrix on val and test splits
 ```
 
-After successful training, copy the model to the backend:
+After training, pick a checkpoint and publish it to the backend:
 
 ```bash
-cp runs/classify/runs/classify/run1/weights/best.pt ../backend/model/best.pt
+# See all checkpoints alongside their val/loss per epoch to help you choose
+python publish_model.py --list
+
+# Publish the checkpoint you want (backend switches on next request)
+python publish_model.py --run run2 --checkpoint best
+python publish_model.py --run run2 --checkpoint epoch15   # if epoch15 had lower val/loss
+
+# Evaluate a specific checkpoint before publishing
+# Note: YOLO nests the output under runs/classify/runs/classify/<run>/
+python evaluate.py --model runs/classify/runs/classify/run2/weights/epoch15.pt
+python evaluate.py --model runs/classify/runs/classify/run2/weights/best.pt --split test
 ```
 
-Then commit and push the updated weights to GitHub.
+You can also switch the active model at runtime via the API without restarting the server — see `POST /ai/model/select`.
+
+#### How to pick the right checkpoint
+
+| Signal | What to look for |
+|--------|-----------------|
+| `val/loss` in results.csv | Pick the epoch where it is **lowest before it starts rising** |
+| `best.pt` | YOLO's auto-pick by highest val accuracy — safe default |
+| `last.pt` | Final epoch — often the most overfit, avoid unless loss is still falling |
+| Per-class callback output | Look for the first epoch where **all classes** reach balanced (non-suspicious) accuracy |
+| `evaluate.py` output | Run on each candidate; a balanced confusion matrix beats a perfect one |
 
 ### Model performance
 
-| Metric | Value |
-|--------|-------|
-| Architecture | YOLOv8n-cls |
-| Parameters | 1,442,131 |
-| Training images | 2,520 (630 original + 3x augmentation) |
-| Validation accuracy | 100% |
-| Test accuracy | 100% |
-| Inference speed | 5.2ms per image |
-| Epochs to converge | 6 |
-| Transfer learning | ImageNet pretrained (156/158 layers) |
+| Metric | v1.0 | v2.0 |
+|--------|------|------|
+| Architecture | YOLOv8n-cls | YOLOv8n-cls |
+| Parameters | 1,442,131 | 1,442,131 |
+| Training images | 2,520 (630 original + 3× aug) | 2,520 (630 original + 3× aug) |
+| Epochs to converge | 6 | 7 |
+| Epochs total | 11 | 17 (early stop) |
+| Validation accuracy | 100% ⚠️ | 100% |
+| Test accuracy | 100% ⚠️ | 100% (90/90 unseen) |
+| Inference speed | ~5ms per image | ~5ms per image |
+| Regularisation | none | dropout 0.3, label smoothing 0.1, weight decay 0.001 |
+| Transfer learning | ImageNet pretrained | ImageNet pretrained |
+
+> ⚠️ v1.0 accuracy is suspicious — the model achieved 100% by epoch 6 with no regularisation. Root cause: pre-computed static augmentation files meant the model memorised the exact pixel values of `_aug0/1/2.jpg` rather than learning genuine invariance. v2.0 adds regularisation, converged one epoch later, and confirmed 100% on the held-out test set (data the model never saw during training), indicating the result reflects genuine generalisation rather than memorisation. Caveat: 30 test images per class is a small statistical sample.
 
 ### What's in the repo
 
-- **Included:** `preprocess.py`, `train.py`, `evaluate.py`, preprocessed `dataset/`, base `yolov8n-cls.pt`, trained `best.pt` (2MB)
-- **Git-ignored:** `ai/runs/` (training artifacts), raw images (use cloud storage)
-- **Why:** Dataset + trained weights are small enough and necessary for deployment. Training artifacts are regenerated during retraining.
+- **Included:** `preprocess.py`, `train.py`, `evaluate.py`, `publish_model.py`, preprocessed `dataset/` cache files, base `yolov8n-cls.pt`, trained `backend/model/best.pt` (v1.0, 2MB), `active_model.json`
+- **Git-ignored:** `ai/runs/` (training artifacts), `ai/mlflow.db`, raw images (use cloud storage)
+- **Why:** The trained weights and config are small enough and necessary for deployment. Training run artifacts are regenerated by `train.py` and do not belong in version control.
 
 ---
 

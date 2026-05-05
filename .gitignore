@@ -53,5 +53,10 @@ ai/**/*.gif
 *.7z
 *.tar.gz
 
+# ML training artifacts
+ai/runs/
+ai/mlflow.db
+ai/mlruns/
+
 # Nested copies/backups
 PBAnalytics/

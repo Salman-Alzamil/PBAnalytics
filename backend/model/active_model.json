@@ -1,0 +1,6 @@
+{
+  "version": "v2.0",
+  "checkpoint": "best",
+  "path": "model/v2.0/best.pt",
+  "description": "Run 'run2' \u2014 checkpoint 'best'"
+}
