@@ -1,0 +1,26 @@
+id,first_name,last_name,phone,email,city,notes
+1,Ahmed,Al-Rashid,+966501234567,ahmed.rashid@email.com,Riyadh,Work colleague
+2,Sara,Mohammed,+966552345678,sara.m@email.com,Jeddah,Friend
+3,Khalid,Al-Zahrani,+966503456789,khalid.z@email.com,Dammam,Family
+4,Lina,Kim,+966544567890,lina.kim@email.com,Riyadh,Work colleague
+5,Omar,Hassan,+966555678901,omar.h@email.com,Jeddah,Friend
+6,Fatima,Al-Otaibi,+966506789012,fatima.o@email.com,Riyadh,Family
+7,James,Carter,+966547890123,james.c@email.com,Dammam,Work colleague
+8,Nour,Al-Ghamdi,+966558901234,nour.g@email.com,Riyadh,Friend
+9,Yusuf,Al-Shehri,+966509012345,yusuf.s@email.com,Mecca,Family
+10,Emily,Zhang,+966540123456,emily.z@email.com,Riyadh,Work colleague
+11,Ahmed,Al-Rashid,+966501234567,ahmed.rashid@email.com,Riyadh,Duplicate entry
+12,Khalid,Al-Zahrani,+966503456789,khalid.zahrani@email.com,Dammam,Possible duplicate
+13,Tariq,Al-Harbi,+966505678902,tariq.h@email.com,Jeddah,Friend
+14,Mona,Ibrahim,+966546789013,mona.i@email.com,Riyadh,Work colleague
+15,Bilal,Chaudhry,+966557890124,bilal.c@email.com,Dammam,Work colleague
+16,Aisha,Al-Mutairi,+966508901235,aisha.m@email.com,Riyadh,Family
+17,Daniel,Okonkwo,+966549012346,daniel.o@email.com,Jeddah,Friend
+18,Zara,Al-Sulami,+966550123457,zara.s@email.com,Riyadh,Work colleague
+19,Rania,Mostafa,+966502345679,rania.m@email.com,Riyadh,Friend
+20,Abdullah,Al-Qahtani,+966543456780,abuq@email.com,Dammam,Family
+21,sara,mohammed,+966552345678,Sara.M@email.com,Jeddah,Possible duplicate
+22,Hana,Kim,+966551234568,hana.k@email.com,Riyadh,Work colleague
+23,Nasser,Al-Dosari,+966509876543,nasser.d@email.com,Jeddah,Friend
+24,Layla,Al-Amer,+966548765432,layla.a@email.com,Riyadh,Family
+25,Mohammed,Al-Ghamdi,+966557654321,mohammed.g@email.com,Dammam,Work colleague

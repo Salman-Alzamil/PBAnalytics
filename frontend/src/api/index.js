@@ -64,5 +64,15 @@ export const api = {
 
   },
 
+  uploadContactPicture: (contactId, file) => {
+
+    const fd = new FormData()
+
+    fd.append('file', file)
+
+    return http.post(`/contacts/${contactId}/picture/upload`, fd)
+
+  },
+
 }
  

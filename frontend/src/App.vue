@@ -42,12 +42,12 @@
           <span class="sidebar__link-label">Favourites</span>
         </RouterLink>
 
-        <RouterLink to="/import" class="sidebar__link">
+        <RouterLink to="/manage" class="sidebar__link">
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M10 13V3m0 10-3-3m3 3 3-3"/>
             <path d="M3 14v1.5A1.5 1.5 0 0 0 4.5 17h11a1.5 1.5 0 0 0 1.5-1.5V14"/>
           </svg>
-          <span class="sidebar__link-label">Import CSV</span>
+          <span class="sidebar__link-label">Manage Contacts</span>
         </RouterLink>
       </nav>
 

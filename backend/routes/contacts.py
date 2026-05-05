@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile, File
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import Contact
+from models import Contact, UploadedImage
 from schemas import ContactCreate, ContactResponse
+from utils.ai_classifier import classify_image_bytes
+from utils.image_store import compress_image
 
 router = APIRouter(prefix="/contacts", tags=["Contacts"])
 
@@ -95,6 +97,75 @@ def update_contact_picture(contact_id: int, update_data: ProfilePictureUpdate, d
     db.commit()
     db.refresh(contact)
     return contact
+
+@router.post("/{contact_id}/picture/upload")
+async def upload_contact_picture(
+    contact_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """Classify an image and, if confidence >= 85%, save it and set it as the contact's profile picture."""
+    contact = db.query(Contact).filter(Contact.id == contact_id).first()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image.")
+
+    original_bytes = await file.read()
+    if len(original_bytes) == 0:
+        raise HTTPException(status_code=400, detail="Empty file.")
+    if len(original_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File too large. Maximum size is 10 MB.")
+
+    try:
+        results = classify_image_bytes(original_bytes)
+        prediction = results.get("prediction")
+        confidence = results.get("confidence")
+        accepted = confidence >= 90
+
+        image_id = None
+        if accepted:
+            compressed_bytes, stored_content_type = compress_image(original_bytes)
+            if len(compressed_bytes) >= len(original_bytes):
+                compressed_bytes = original_bytes
+                stored_content_type = file.content_type
+
+            old_image_id = contact.profile_picture_id
+
+            record = UploadedImage(
+                filename=file.filename or "uploaded_image",
+                content_type=stored_content_type,
+                image_bytes=compressed_bytes,
+                original_size=len(original_bytes),
+                compressed_size=len(compressed_bytes),
+                prediction=prediction,
+                confidence=confidence,
+                model_version="best.pt"
+            )
+            db.add(record)
+            db.flush()
+            contact.profile_picture_id = record.id
+            db.commit()
+            image_id = record.id
+
+            if old_image_id:
+                old_image = db.query(UploadedImage).filter(UploadedImage.id == old_image_id).first()
+                if old_image:
+                    db.delete(old_image)
+                    db.commit()
+
+        return {
+            "accepted": accepted,
+            "prediction": prediction,
+            "confidence": confidence,
+            "all_classes": results.get("all_classes"),
+            "image_id": image_id,
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to process image: {str(e)}")
+
 
 @router.delete("/{contact_id}/picture", status_code=204)
 def delete_contact_picture(contact_id: int, db: Session = Depends(get_db)):

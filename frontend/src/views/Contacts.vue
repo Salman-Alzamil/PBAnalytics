@@ -161,6 +161,29 @@
           </div>
         </div>
 
+        <!-- Delete contact -->
+        <div class="pic-delete-row" style="padding-top:0">
+          <template v-if="!confirmDeleteContact">
+            <button class="ghost pic-delete-btn" @click="confirmDeleteContact = true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/>
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+              </svg>
+              Delete contact
+            </button>
+          </template>
+          <template v-else>
+            <span class="pic-delete-confirm-text">Delete this contact permanently?</span>
+            <button class="pic-confirm-btn" @click="deleteContact" :disabled="deletingContact">
+              <span v-if="deletingContact" class="btn-spinner btn-spinner-light" />
+              {{ deletingContact ? 'Deleting…' : 'Confirm' }}
+            </button>
+            <button class="ghost" @click="confirmDeleteContact = false" :disabled="deletingContact">Cancel</button>
+          </template>
+        </div>
+
         <div class="drawer-sep" />
 
         <!-- Appearance Analysis -->
@@ -217,12 +240,12 @@
 
           <!-- Actions -->
           <div v-if="selectedFile" class="drop-actions">
-            <button @click="analyze" :disabled="classifying" style="flex:1;justify-content:center">
+            <button @click="addPhoto" :disabled="classifying" style="flex:1;justify-content:center">
               <span v-if="classifying" class="btn-spinner" />
               <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path d="m9 18 6-6-6-6"/>
               </svg>
-              {{ classifying ? 'Analyzing…' : 'Analyze' }}
+              {{ classifying ? 'Adding…' : 'Add' }}
             </button>
             <button class="ghost" @click="clearImage" :disabled="classifying">Clear</button>
           </div>
@@ -368,29 +391,33 @@ const prevPage     = () => { if (page.value > 1) page.value-- }
 onMounted(fetchContacts)
 
 // ── Drawer ─────────────────────────────────────────────────────
-const drawerOpen       = ref(false)
-const selectedContact  = ref(null)
-const fileInput        = ref(null)
-const dropActive       = ref(false)
-const selectedFile     = ref(null)
-const previewUrl       = ref(null)
-const classifying      = ref(false)
-const classifyResult   = ref(null)
-const confirmDeletePic = ref(false)
-const deletingPic      = ref(false)
+const drawerOpen            = ref(false)
+const selectedContact       = ref(null)
+const fileInput             = ref(null)
+const dropActive            = ref(false)
+const selectedFile          = ref(null)
+const previewUrl            = ref(null)
+const classifying           = ref(false)
+const classifyResult        = ref(null)
+const confirmDeletePic      = ref(false)
+const deletingPic           = ref(false)
+const confirmDeleteContact  = ref(false)
+const deletingContact       = ref(false)
 
 function openContact(c) {
-  selectedContact.value  = c
-  classifyResult.value   = null
-  confirmDeletePic.value = false
-  drawerOpen.value       = true
+  selectedContact.value       = c
+  classifyResult.value        = null
+  confirmDeletePic.value      = false
+  confirmDeleteContact.value  = false
+  drawerOpen.value            = true
 }
 
 function closeDrawer() {
   drawerOpen.value = false
   setTimeout(() => {
-    selectedContact.value  = null
-    confirmDeletePic.value = false
+    selectedContact.value       = null
+    confirmDeletePic.value      = false
+    confirmDeleteContact.value  = false
     clearImage()
   }, 300)
 }
@@ -421,7 +448,7 @@ async function deletePicture() {
     confirmDeletePic.value = false
     addToast('success', 'Profile photo removed')
   } catch {
-    addToast('danger', 'Failed to remove photo — please try again')
+    addToast('danger', 'Failed to remove photo')
   } finally {
     deletingPic.value = false
   }
@@ -435,55 +462,68 @@ function clearImage() {
   if (fileInput.value) fileInput.value.value = ''
 }
 
-async function analyze() {
+async function addPhoto() {
   if (!selectedFile.value || classifying.value) return
   classifying.value    = true
   classifyResult.value = null
   try {
-    const res = await api.classifyImage(selectedFile.value)
+    const res = await api.uploadContactPicture(selectedContact.value.id, selectedFile.value)
     classifyResult.value = res.data
-    const { image_id, prediction, confidence } = res.data
-    
-    if (image_id && selectedContact.value) {
-      await api.updateContactPicture(selectedContact.value.id, image_id)
+    const { prediction, confidence, accepted, image_id } = res.data
+
+    if (!accepted) {
+      addToast('warning', 'Classification unsuccessful')
+    } else if (prediction === 'saudi_formal') {
+      addToast('success', 'Added. Person wearing Saudi formal clothing')
+    } else if (prediction === 'casual_clothing') {
+      addToast('info', 'Added. Person wearing casual clothing')
+    } else {
+      addToast('info', 'Added. No person detected')
+    }
+
+    if (accepted && image_id) {
       selectedContact.value.profile_picture_id = image_id
-      // Update in allContacts array directly to avoid full refetch
       const idx = allContacts.value.findIndex(c => c.id === selectedContact.value.id)
       if (idx !== -1) allContacts.value[idx].profile_picture_id = image_id
     }
-
-    if (confidence < 80) {
-      addToast('warning', `Confidence too low (${confidence.toFixed(1)}%) — try a clearer photo`)
-    } else if (prediction === 'not_human') {
-      addToast('danger', 'This image does not contain a person')
-    } else if (prediction === 'saudi_formal') {
-      addToast('success', 'Person is wearing Saudi formal clothing')
-    } else {
-      addToast('info', 'Person is wearing casual clothing')
-    }
   } catch {
-    addToast('danger', 'Classification failed — please try again')
+    addToast('danger', 'Request failed')
   } finally {
     classifying.value = false
+  }
+}
+
+async function deleteContact() {
+  if (!selectedContact.value || deletingContact.value) return
+  deletingContact.value = true
+  try {
+    await api.deleteContact(selectedContact.value.id)
+    allContacts.value = allContacts.value.filter(c => c.id !== selectedContact.value.id)
+    closeDrawer()
+    addToast('success', 'Contact deleted')
+  } catch {
+    addToast('danger', 'Failed to delete contact')
+  } finally {
+    deletingContact.value = false
   }
 }
 
 const resultStatus = computed(() => {
   if (!classifyResult.value) return null
   const { prediction, confidence } = classifyResult.value
-  if (confidence < 80)                  return 'warning'
-  if (prediction === 'not_human')       return 'danger'
-  if (prediction === 'saudi_formal')    return 'success'
+  if (confidence < 85)               return 'danger'
+  if (prediction === 'saudi_formal') return 'success'
+  if (prediction === 'not_human')    return 'warning'
   return 'info'
 })
 
 const resultMessage = computed(() => {
   if (!classifyResult.value) return ''
   const { prediction, confidence } = classifyResult.value
-  if (confidence < 80)                  return `Confidence too low (${confidence.toFixed(1)}%) — try a clearer photo`
-  if (prediction === 'not_human')       return 'No person detected in this image'
-  if (prediction === 'saudi_formal')    return 'Person is wearing Saudi formal clothing'
-  return 'Person is wearing casual clothing'
+  if (confidence < 85)               return 'Classification unsuccessful'
+  if (prediction === 'saudi_formal') return 'Added. Person wearing Saudi formal clothing'
+  if (prediction === 'not_human')    return 'Added. No person detected'
+  return 'Added. Person wearing casual clothing'
 })
 
 // ── Toasts ─────────────────────────────────────────────────────

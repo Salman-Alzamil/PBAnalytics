@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import UploadedImage
 from utils.ai_classifier import classify_image_bytes
-from utils.image_store import compress_image
+
 router = APIRouter(prefix="/ai", tags=["AI"])
 
 @router.get("/images/{image_id}")
@@ -35,52 +35,21 @@ def list_saved_images(db: Session = Depends(get_db)):
 @router.post("/classify")
 async def classify_image(
    file: UploadFile = File(...),
-   db: Session = Depends(get_db)
 ):
-   """
-   Accept an image upload, classify it, compress it,
-   and store both the image and prediction in Postgres.
-   """
+   """Classify an image using the YOLO model. Only for testing the model, no saving to database."""
    if not file.content_type or not file.content_type.startswith("image/"):
        raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image.")
    original_bytes = await file.read()
    if len(original_bytes) == 0:
        raise HTTPException(status_code=400, detail="Empty file. Please upload a valid image.")
-   MAX_SIZE = 10 * 1024 * 1024  # 10 MB
-   if len(original_bytes) > MAX_SIZE:
+   if len(original_bytes) > 10 * 1024 * 1024:
        raise HTTPException(status_code=413, detail="File too large. Maximum size is 10 MB.")
    try:
-       compressed_bytes, stored_content_type = compress_image(original_bytes)
-       
-       # In case the original is already highly compressed and "compressing" makes it larger
-       if len(compressed_bytes) >= len(original_bytes):
-           compressed_bytes = original_bytes
-           stored_content_type = file.content_type
-           
        results = classify_image_bytes(original_bytes)
-       record = UploadedImage(
-           filename=file.filename or "uploaded_image",
-           content_type=stored_content_type,
-           image_bytes=compressed_bytes,
-           original_size=len(original_bytes),
-           compressed_size=len(compressed_bytes),
-           prediction=results.get("prediction"),
-           confidence=results.get("confidence"),
-           model_version="best.pt"
-       )
-       db.add(record)
-       db.commit()
-       db.refresh(record)
        return {
-           "image_id": record.id,
            "prediction": results.get("prediction"),
            "confidence": results.get("confidence"),
            "all_classes": results.get("all_classes"),
-           "original_size": len(original_bytes),
-           "compressed_size": len(compressed_bytes),
-           "compression_ratio": round(len(compressed_bytes) / len(original_bytes), 3),
-           "message": "Image classified and stored successfully."
        }
    except Exception as e:
-       db.rollback()
-       raise HTTPException(status_code=500, detail=f"Failed to classify and store image: {str(e)}")
+       raise HTTPException(status_code=500, detail=f"Failed to classify image: {str(e)}")
