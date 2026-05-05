@@ -52,3 +52,6 @@ ai/**/*.gif
 *.rar
 *.7z
 *.tar.gz
+
+# Nested copies/backups
+PBAnalytics/
