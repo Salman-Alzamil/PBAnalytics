@@ -1,6 +1,10 @@
 from sqlalchemy import Column, Integer, String, Boolean, Float, Date, Time, LargeBinary, DateTime
-from datetime import datetime
+from datetime import datetime, timedelta
 from database import Base
+
+def get_riyadh_time():
+    # Riyadh is UTC+3
+    return datetime.utcnow() + timedelta(hours=3)
 
 class Contact(Base):
     __tablename__ = "contacts"
@@ -41,4 +45,4 @@ class UploadedImage(Base):
     prediction = Column(String, nullable=True)
     confidence = Column(Float, nullable=True)
     model_version = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_riyadh_time)
