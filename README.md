@@ -19,18 +19,35 @@ PBAnalytics/
 │   ├── import_csv.py         # CLI tool to bulk-import CSV data
 │   ├── requirements.txt      # Python dependencies
 │   ├── model/
+<<<<<<< HEAD
+│   │   └── best.pt           # Trained YOLO model weights (2MB)
+=======
 │   │   ├── active_model.json # Tracks which checkpoint is currently active
 │   │   ├── best.pt           # v1.0 trained weights (2MB)
 │   │   └── v2.0/             # v2.0 checkpoints (created by publish_model.py)
 │   │       ├── best.pt
 │   │       ├── epoch15.pt    # example periodic checkpoint
 │   │       └── ...
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
 │   ├── routes/
 │   │   ├── contacts.py       # GET/POST/PUT/DELETE /contacts
 │   │   ├── calls.py          # GET /calls and /calls/stats
 │   │   ├── favourites.py     # GET /favourites
 │   │   ├── dashboard.py      # GET /dashboard/summary
 │   │   ├── import_csv.py     # POST /import/contacts and /import/calls
+<<<<<<< HEAD
+│   │   ├── ai.py             # POST /ai/classify, GET /ai/images
+│   │   └── face_search.py    # POST /search/by-face, /analyze/group-image, /identify/face, /face-embeddings/*
+│   └── utils/
+│       ├── cleaner.py        # Data cleaning and normalisation logic
+│       ├── favourites.py     # Favourites scoring algorithm
+│       ├── ai_classifier.py  # YOLO model loading and inference
+│       └── face_embeddings.py  # InsightFace buffalo_l detection and embedding
+├── ai/                       # ML training pipeline
+│   ├── preprocess.py         # Data cleaning, augmentation, and dataset splitting
+│   ├── train.py              # YOLOv8 training script
+│   ├── evaluate.py           # Model evaluation and performance metrics
+=======
 │   │   └── ai.py             # POST /ai/classify, GET /ai/images, model management
 │   └── utils/
 │       ├── cleaner.py        # Data cleaning and normalisation logic
@@ -41,11 +58,16 @@ PBAnalytics/
 │   ├── train.py              # YOLOv8 training script with per-class diagnostics
 │   ├── evaluate.py           # Per-class accuracy, confusion matrix (accepts --model flag)
 │   ├── publish_model.py      # Copy a checkpoint to backend/model/ and set it active
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
 │   ├── dataset/              # Preprocessed dataset (70/20/10 split) — included for reproducibility
 │   │   ├── train.cache
 │   │   ├── valid.cache
 │   │   └── test.cache
 │   ├── yolov8n-cls.pt        # Base YOLOv8n model
+<<<<<<< HEAD
+│   ├── mlflow.db             # Training experiment logs
+=======
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
 │   └── runs/                 # Training artifacts (git-ignored, regenerated during retraining)
 ├── frontend/                 # Vue 3 frontend
 │   └── src/
@@ -191,6 +213,18 @@ The app will be available at **http://localhost:5173**
 - Upload contacts or calls CSV directly from the browser
 - Shows import summary (how many records were added / skipped)
 
+<<<<<<< HEAD
+### Face Search (experimental)
+Two AI-powered features for identifying contacts by photo.
+
+**Find Person** — Upload a photo containing a single face. The system extracts a face embedding and searches the contact database for the closest match, returning the contact's details and a similarity score.
+
+**Group Photo** — Upload a photo with multiple people. The system detects every face and overlays numbered bounding boxes on the image. Click any face to identify that person against the contact database.
+
+Before searching, click **Index Faces** on the Face Search page to pre-compute embeddings for all existing contact profile pictures. Re-run it after adding new contacts.
+
+=======
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
 ---
 
 ## API Endpoints
@@ -212,9 +246,17 @@ The app will be available at **http://localhost:5173**
 | POST | `/ai/classify` | Classify an uploaded image |
 | GET | `/ai/images` | List all previously classified images |
 | GET | `/ai/images/{id}` | Retrieve a stored image by ID |
+<<<<<<< HEAD
+| POST | `/search/by-face` | Find a contact by uploading a single-face photo |
+| POST | `/analyze/group-image` | Detect all faces in a group photo (returns bounding boxes + embeddings) |
+| POST | `/identify/face` | Identify one face given its embedding vector |
+| POST | `/face-embeddings/precompute` | Pre-compute and store embeddings for all contact profile pictures |
+| GET | `/face-embeddings/status` | Check whether the face index is up to date |
+=======
 | GET | `/ai/models` | List all available .pt checkpoint files |
 | GET | `/ai/model/info` | Show which checkpoint is currently loaded |
 | POST | `/ai/model/select` | Switch the active checkpoint without restarting |
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
 
 Full interactive documentation available at **http://localhost:8000/docs** when the server is running.
 
@@ -230,6 +272,43 @@ An uploaded image passes through a YOLOv8n-cls model layer by layer. Early layer
 
 ### Training the model
 
+<<<<<<< HEAD
+The training pipeline is included for reproducibility. The preprocessed dataset (50MB) is committed to the repo for easy setup.
+
+```bash
+cd ai
+python preprocess.py     # Resizes images to 224x224, splits 70/20/10, generates augmented versions
+python train.py          # Fine-tunes YOLOv8n-cls and saves best weights
+python evaluate.py       # Evaluates model on test set and generates metrics
+```
+
+After successful training, copy the model to the backend:
+
+```bash
+cp runs/classify/runs/classify/run1/weights/best.pt ../backend/model/best.pt
+```
+
+Then commit and push the updated weights to GitHub.
+
+### Model performance
+
+| Metric | Value |
+|--------|-------|
+| Architecture | YOLOv8n-cls |
+| Parameters | 1,442,131 |
+| Training images | 2,520 (630 original + 3x augmentation) |
+| Validation accuracy | 100% |
+| Test accuracy | 100% |
+| Inference speed | 5.2ms per image |
+| Epochs to converge | 6 |
+| Transfer learning | ImageNet pretrained (156/158 layers) |
+
+### What's in the repo
+
+- **Included:** `preprocess.py`, `train.py`, `evaluate.py`, preprocessed `dataset/`, base `yolov8n-cls.pt`, trained `best.pt` (2MB)
+- **Git-ignored:** `ai/runs/` (training artifacts), raw images (use cloud storage)
+- **Why:** Dataset + trained weights are small enough and necessary for deployment. Training artifacts are regenerated during retraining.
+=======
 The training pipeline is included for reproducibility. The preprocessed dataset is committed to the repo for easy setup.
 
 ```bash
@@ -289,6 +368,7 @@ You can also switch the active model at runtime via the API without restarting t
 - **Included:** `preprocess.py`, `train.py`, `evaluate.py`, `publish_model.py`, preprocessed `dataset/` cache files, base `yolov8n-cls.pt`, trained `backend/model/best.pt` (v1.0, 2MB), `active_model.json`
 - **Git-ignored:** `ai/runs/` (training artifacts), `ai/mlflow.db`, raw images (use cloud storage)
 - **Why:** The trained weights and config are small enough and necessary for deployment. Training run artifacts are regenerated by `train.py` and do not belong in version control.
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
 
 ---
 
@@ -319,6 +399,11 @@ The cleaner (`utils/cleaner.py`) runs automatically on every import and handles:
 | Charts | Chart.js via vue-chartjs |
 | Build Tool | Vite |
 | Computer Vision | YOLOv8n-cls (Ultralytics) |
+<<<<<<< HEAD
+| Face Recognition | InsightFace buffalo_l (RetinaFace detector + ArcFace embeddings) |
+| Vector Search | pgvector (PostgreSQL extension) with HNSW index |
+=======
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
 | ML Framework | PyTorch |
 | Experiment Tracking | MLflow |
 

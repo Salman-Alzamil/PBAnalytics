@@ -1,6 +1,21 @@
 from ultralytics import YOLO
 from pathlib import Path
 
+<<<<<<< HEAD
+MODEL_BASE  = "yolov8n-cls.pt"
+DATA_DIR    = "dataset/"
+EPOCHS      = 20
+IMG_SIZE    = 224
+BATCH       = 16
+PROJECT     = "runs/classify"
+RUN_NAME    = "run1"
+
+def train():
+    if not Path(DATA_DIR).exists():
+        raise FileNotFoundError(f"Dataset not found at '{DATA_DIR}'. Run preprocess.py first.")
+
+    model = YOLO(MODEL_BASE)
+=======
 
 MODEL_BASE   = "yolov8n-cls.pt"
 DATA_DIR     = "dataset/"
@@ -88,16 +103,27 @@ def train():
     model = YOLO(MODEL_BASE)
     model.add_callback("on_fit_epoch_end", _per_class_accuracy)
 
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
     results = model.train(
         data=DATA_DIR,
         epochs=EPOCHS,
         imgsz=IMG_SIZE,
         batch=BATCH,
+<<<<<<< HEAD
+        patience=5,
+=======
         patience=10,          # wider window so overfitting gap becomes visible
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
         project=PROJECT,
         name=RUN_NAME,
         exist_ok=True,
         verbose=True,
+<<<<<<< HEAD
+    )
+    print(f"\nTraining complete. Best model: {PROJECT}/{RUN_NAME}/weights/best.pt")
+    return results
+
+=======
         save_period=SAVE_PERIOD,  # save epoch0/5/10/.../25.pt + best.pt + last.pt
         # ── Anti-overfitting ──────────────────────────────────────────────
         dropout=0.3,          # dropout on the classification head
@@ -110,5 +136,6 @@ def train():
     return results
 
 
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
 if __name__ == "__main__":
     train()

@@ -5,6 +5,7 @@ __pycache__/
 *.pyd
 .Python
 venv/
+.venv/
 env/
 .env
 *.env
@@ -60,3 +61,8 @@ ai/mlruns/
 
 # Nested copies/backups
 PBAnalytics/
+
+# Docs and test images
+docs/
+test_imgs/
+

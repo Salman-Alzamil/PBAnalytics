@@ -42,12 +42,30 @@
           <span class="sidebar__link-label">Favourites</span>
         </RouterLink>
 
+<<<<<<< HEAD
+        <RouterLink to="/import" class="sidebar__link">
+=======
         <RouterLink to="/manage" class="sidebar__link">
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M10 13V3m0 10-3-3m3 3 3-3"/>
             <path d="M3 14v1.5A1.5 1.5 0 0 0 4.5 17h11a1.5 1.5 0 0 0 1.5-1.5V14"/>
           </svg>
+<<<<<<< HEAD
+          <span class="sidebar__link-label">Import CSV</span>
+        </RouterLink>
+
+        <RouterLink to="/face-search" class="sidebar__link">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="8" cy="8" r="4.5"/>
+            <path d="M14 14l3.5 3.5"/>
+            <circle cx="8" cy="6.5" r="1.5"/>
+            <path d="M4.5 12c0-2 1.5-3.5 3.5-3.5s3.5 1.5 3.5 3.5"/>
+          </svg>
+          <span class="sidebar__link-label">Face Search</span>
+=======
           <span class="sidebar__link-label">Manage Contacts</span>
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
         </RouterLink>
       </nav>
 

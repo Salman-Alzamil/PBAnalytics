@@ -1,3 +1,27 @@
+<<<<<<< HEAD
+from ultralytics import YOLO
+from io import BytesIO
+from PIL import Image
+import os
+
+_model = None
+
+def _get_model():
+    global _model
+    if _model is None:
+        model_path = 'model/best.pt'
+        if not os.path.exists(model_path):
+            raise RuntimeError(f"Model file not found: {model_path}")
+        _model = YOLO(model_path)
+    return _model
+
+def classify_image_bytes(image_bytes: bytes) -> dict:
+    """
+    Takes raw image bytes, runs YOLO classification,
+    returns prediction and confidence as a dict.
+    """
+    model = _get_model()
+=======
 import json
 import os
 from io import BytesIO
@@ -47,6 +71,7 @@ def get_model_info() -> dict:
 
 def classify_image_bytes(image_bytes: bytes) -> dict:
     model, _ = _get_model()
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
     img = Image.open(BytesIO(image_bytes)).convert("RGB")
     result = model.predict(img, verbose=False)
     predicted_class = result[0].names[result[0].probs.top1]
@@ -58,5 +83,9 @@ def classify_image_bytes(image_bytes: bytes) -> dict:
     return {
         "prediction": predicted_class,
         "confidence": round(confidence, 2),
+<<<<<<< HEAD
+        "all_classes": all_probs
+=======
         "all_classes": all_probs,
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
     }

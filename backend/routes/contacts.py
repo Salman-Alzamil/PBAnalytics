@@ -1,3 +1,11 @@
+<<<<<<< HEAD
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy.orm import Session
+
+from database import get_db
+from models import Contact
+from schemas import ContactCreate, ContactResponse
+=======
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile, File
 from sqlalchemy.orm import Session
 
@@ -6,6 +14,7 @@ from models import Contact, UploadedImage
 from schemas import ContactCreate, ContactResponse
 from utils.ai_classifier import classify_image_bytes
 from utils.image_store import compress_image
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
 
 router = APIRouter(prefix="/contacts", tags=["Contacts"])
 
@@ -89,6 +98,11 @@ def update_contact(contact_id: int, contact_update: ContactCreate, db: Session =
 
 @router.patch("/{contact_id}/picture", response_model=ContactResponse)
 def update_contact_picture(contact_id: int, update_data: ProfilePictureUpdate, db: Session = Depends(get_db)):
+<<<<<<< HEAD
+    from models import UploadedImage
+    from sqlalchemy import text
+=======
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
     contact = db.query(Contact).filter(Contact.id == contact_id).first()
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
@@ -96,6 +110,33 @@ def update_contact_picture(contact_id: int, update_data: ProfilePictureUpdate, d
     contact.profile_picture_id = update_data.profile_picture_id
     db.commit()
     db.refresh(contact)
+<<<<<<< HEAD
+
+    # Best-effort: index the new face so it's immediately searchable
+    if update_data.profile_picture_id:
+        try:
+            from utils.face_embeddings import extract_embedding_for_profile
+            from routes.face_search import _emb_str
+            image = db.query(UploadedImage).filter(UploadedImage.id == update_data.profile_picture_id).first()
+            if image:
+                embedding = extract_embedding_for_profile(image.image_bytes)
+                if embedding:
+                    db.execute(text("DELETE FROM contact_face_embeddings WHERE contact_id = :cid"), {"cid": contact.id})
+                    db.execute(
+                        text("INSERT INTO contact_face_embeddings (contact_id, embedding, created_at) VALUES (:cid, CAST(:emb AS vector), NOW())"),
+                        {"cid": contact.id, "emb": _emb_str(embedding)},
+                    )
+                    db.commit()
+        except Exception:
+            pass  # never block the picture save if face indexing fails
+
+    return contact
+
+@router.delete("/{contact_id}/picture", status_code=204)
+def delete_contact_picture(contact_id: int, db: Session = Depends(get_db)):
+    from models import UploadedImage
+    from sqlalchemy import text
+=======
     return contact
 
 @router.post("/{contact_id}/picture/upload")
@@ -170,6 +211,7 @@ async def upload_contact_picture(
 @router.delete("/{contact_id}/picture", status_code=204)
 def delete_contact_picture(contact_id: int, db: Session = Depends(get_db)):
     from models import UploadedImage
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
     contact = db.query(Contact).filter(Contact.id == contact_id).first()
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
@@ -184,4 +226,14 @@ def delete_contact_picture(contact_id: int, db: Session = Depends(get_db)):
             db.delete(image)
             db.commit()
 
+<<<<<<< HEAD
+    # Remove stale face embedding
+    try:
+        db.execute(text("DELETE FROM contact_face_embeddings WHERE contact_id = :cid"), {"cid": contact_id})
+        db.commit()
+    except Exception:
+        pass
+
+=======
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
     return Response()

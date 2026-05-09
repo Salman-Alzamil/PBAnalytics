@@ -1,12 +1,59 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+<<<<<<< HEAD
+from sqlalchemy import text
+=======
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
 from database import engine
 
 # Import all models before create_all to ensure they are registered in the Base metadata
 import models
 from models import Base
 from routes import contacts, calls, favourites, dashboard, import_csv, ai
+<<<<<<< HEAD
+from routes import face_search
+
+# Enable pgvector extension and create/migrate the face embeddings table + HNSW index
+_EMBED_DIM = 512  # ArcFace; must match utils/face_embeddings.py EMBED_DIM
+
+with engine.connect() as _conn:
+    _conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+
+    # Auto-migrate: if the table exists with a different embedding dimension, drop it.
+    # The index is just a cache — the user re-runs "Index Faces" after any re-deploy.
+    try:
+        _row = _conn.execute(text("""
+            SELECT format_type(atttypid, atttypmod)
+            FROM pg_attribute
+            WHERE attrelid = 'contact_face_embeddings'::regclass
+              AND attname = 'embedding'
+        """)).first()
+        if _row and _row[0] != f"vector({_EMBED_DIM})":
+            _conn.execute(text("DROP TABLE contact_face_embeddings"))
+            _conn.commit()
+    except Exception:
+        pass  # Table does not exist yet; CREATE TABLE below handles it
+
+    _conn.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS contact_face_embeddings (
+            id          SERIAL PRIMARY KEY,
+            contact_id  INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+            embedding   vector({_EMBED_DIM}) NOT NULL,
+            created_at  TIMESTAMP DEFAULT NOW()
+        )
+    """))
+    _conn.execute(text(
+        "CREATE INDEX IF NOT EXISTS idx_cfe_contact_id ON contact_face_embeddings(contact_id)"
+    ))
+    _conn.execute(text(f"""
+        CREATE INDEX IF NOT EXISTS idx_cfe_hnsw
+        ON contact_face_embeddings
+        USING hnsw (embedding vector_cosine_ops)
+    """))
+    _conn.commit()
+=======
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
 
 Base.metadata.create_all(bind=engine)
 
@@ -41,6 +88,10 @@ app.include_router(calls.router)
 app.include_router(favourites.router)
 app.include_router(dashboard.router)
 app.include_router(import_csv.router)
+<<<<<<< HEAD
+app.include_router(face_search.router)
+=======
+>>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
 
 @app.get("/")
 def home(): # Health check endpoint — confirms the API is running
