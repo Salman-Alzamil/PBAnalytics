@@ -5,6 +5,7 @@ __pycache__/
 *.pyd
 .Python
 venv/
+.venv/
 env/
 .env
 *.env
@@ -17,6 +18,7 @@ node_modules/
 dist/
 package-lock.json
 npm-debug.log*
+frontend/dist/
 
 # Vite
 frontend/.vite/
@@ -60,3 +62,12 @@ ai/mlruns/
 
 # Nested copies/backups
 PBAnalytics/
+
+# Docs and test images
+docs/
+test_imgs/
+.agents/
+ai/dataset/
+ai/__pycache__/
+ai/raw_images/
+ai/test_images/
