@@ -1,17 +1,13 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-<<<<<<< HEAD
 from sqlalchemy import text
-=======
->>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
 from database import engine
 
 # Import all models before create_all to ensure they are registered in the Base metadata
 import models
 from models import Base
 from routes import contacts, calls, favourites, dashboard, import_csv, ai
-<<<<<<< HEAD
 from routes import face_search
 
 # Enable pgvector extension and create/migrate the face embeddings table + HNSW index
@@ -52,8 +48,6 @@ with engine.connect() as _conn:
         USING hnsw (embedding vector_cosine_ops)
     """))
     _conn.commit()
-=======
->>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
 
 Base.metadata.create_all(bind=engine)
 
@@ -88,10 +82,7 @@ app.include_router(calls.router)
 app.include_router(favourites.router)
 app.include_router(dashboard.router)
 app.include_router(import_csv.router)
-<<<<<<< HEAD
 app.include_router(face_search.router)
-=======
->>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
 
 @app.get("/")
 def home(): # Health check endpoint — confirms the API is running

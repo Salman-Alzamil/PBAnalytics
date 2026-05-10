@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
-from fastapi.responses import Response
-from sqlalchemy.orm import Session
-from database import get_db
-from models import UploadedImage
-from utils.ai_classifier import classify_image_bytes
-from utils.image_store import compress_image
-router = APIRouter(prefix="/ai", tags=["AI"])
-
-=======
 import json
 import os
 from pathlib import Path
@@ -21,6 +10,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import UploadedImage
 from utils.ai_classifier import classify_image_bytes, get_model_info, reload_model
+from utils.image_store import compress_image
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -29,8 +19,6 @@ _MODEL_DIR   = "model"
 
 
 # ── Image endpoints ───────────────────────────────────────────────────────────
-
->>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
 @router.get("/images/{image_id}")
 def get_image(image_id: int, db: Session = Depends(get_db)):
     record = db.query(UploadedImage).filter(UploadedImage.id == image_id).first()
@@ -41,7 +29,6 @@ def get_image(image_id: int, db: Session = Depends(get_db)):
 
 @router.get("/images")
 def list_saved_images(db: Session = Depends(get_db)):
-<<<<<<< HEAD
    records = db.query(UploadedImage).order_by(UploadedImage.created_at.desc()).all()
    return [
        {
@@ -109,41 +96,6 @@ async def classify_image(
    except Exception as e:
        db.rollback()
        raise HTTPException(status_code=500, detail=f"Failed to classify and store image: {str(e)}")
-=======
-    records = db.query(UploadedImage).order_by(UploadedImage.created_at.desc()).all()
-    return [
-        {
-            "id": r.id,
-            "filename": r.filename,
-            "prediction": r.prediction,
-            "confidence": r.confidence,
-            "original_size": r.original_size,
-            "compressed_size": r.compressed_size,
-            "created_at": r.created_at,
-        }
-        for r in records
-    ]
-
-
-@router.post("/classify")
-async def classify_image(file: UploadFile = File(...)):
-    """Classify an image using the active model. Does not save to the database."""
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image.")
-    original_bytes = await file.read()
-    if len(original_bytes) == 0:
-        raise HTTPException(status_code=400, detail="Empty file. Please upload a valid image.")
-    if len(original_bytes) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="File too large. Maximum size is 10 MB.")
-    try:
-        results = classify_image_bytes(original_bytes)
-        return {
-            "prediction": results["prediction"],
-            "confidence": results["confidence"],
-            "all_classes": results["all_classes"],
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to classify image: {str(e)}")
 
 
 # ── Model management endpoints ────────────────────────────────────────────────
@@ -216,4 +168,3 @@ def select_model(body: SelectModelRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
     return {"message": "Model switched successfully.", "active": loaded}
->>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0

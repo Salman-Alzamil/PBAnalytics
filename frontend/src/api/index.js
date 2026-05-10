@@ -64,17 +64,22 @@ export const api = {
 
   },
 
-<<<<<<< HEAD
-  searchByFace: (file) => {
-=======
   uploadContactPicture: (contactId, file) => {
->>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
 
     const fd = new FormData()
 
     fd.append('file', file)
 
-<<<<<<< HEAD
+    return http.post(`/contacts/${contactId}/picture/upload`, fd)
+
+  },
+
+  searchByFace: (file) => {
+
+    const fd = new FormData()
+
+    fd.append('file', file)
+
     return http.post('/search/by-face', fd)
 
   },
@@ -95,11 +100,5 @@ export const api = {
 
   faceIndexStatus: () => http.get('/face-embeddings/status'),
 
-=======
-    return http.post(`/contacts/${contactId}/picture/upload`, fd)
-
-  },
-
->>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
 }
  

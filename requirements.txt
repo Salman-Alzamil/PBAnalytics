@@ -9,7 +9,6 @@ ultralytics
 mlflow
 dvc
 pillow
-<<<<<<< HEAD
 python-multipart
 deepface
 mtcnn
@@ -18,6 +17,5 @@ tensorflow
 tf-keras
 insightface
 onnxruntime
-=======
+# =======
 python-multipart
->>>>>>> 0a855a0b120d022102947e6e8cda7bac455a71b0
