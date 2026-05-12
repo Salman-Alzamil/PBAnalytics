@@ -335,7 +335,7 @@
                     </div>
                     <div>
                       <p class="rc-label">Contact not found</p>
-                      <p class="rc-sub">No contact matches this face above the 62% threshold</p>
+                      <p class="rc-sub">No contact matches this face above the 40% threshold</p>
                     </div>
                   </div>
                 </template>
