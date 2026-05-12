@@ -2,9 +2,12 @@ from sqlalchemy import Column, Integer, String, Boolean, Float, Date, Time, Larg
 from datetime import datetime, timedelta
 from database import Base
 
+
 def get_riyadh_time():
     # Riyadh is UTC+3
     return datetime.utcnow() + timedelta(hours=3)
+
+
 class Contact(Base):
     __tablename__ = "contacts"
 
@@ -31,6 +34,7 @@ class CallHistory(Base):
     duration_seconds = Column(Integer)
     call_type = Column(String)
     status = Column(String)
+
 
 class UploadedImage(Base):
     __tablename__ = "uploaded_images"

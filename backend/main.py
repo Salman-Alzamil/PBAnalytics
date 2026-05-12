@@ -11,7 +11,7 @@ from routes import contacts, calls, favourites, dashboard, import_csv, ai
 from routes import face_search
 
 # Enable pgvector extension and create/migrate the face embeddings table + HNSW index
-_EMBED_DIM = 512  # ArcFace; must match utils/face_embeddings.py EMBED_DIM
+_EMBED_DIM = 512  # Must match utils/face_embeddings.py EMBED_DIM
 
 with engine.connect() as _conn:
     _conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
@@ -61,20 +61,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.exception_handler(404)
-async def not_found_handler(request: Request, exc): # Returns a structured JSON error when a requested route or resource doesn't exist
+async def not_found_handler(request: Request, exc):
+    # Returns a structured JSON error when a requested route or resource doesn't exist
     return JSONResponse(status_code=404,
         content={"error": "Not found", "path": str(request.url)})
 
+
 @app.exception_handler(422)
-async def validation_handler(request: Request, exc): # Returns a structured JSON error when request data fails Pydantic validation
+async def validation_handler(request: Request, exc):
+    # Returns a structured JSON error when request data fails Pydantic validation
     return JSONResponse(status_code=422,
         content={"error": "Validation failed", "details": exc.errors() if hasattr(exc, 'errors') else str(exc)})
 
+
 @app.exception_handler(500)
-async def server_error_handler(request: Request, exc): # Catches any unhandled server crash and returns a clean JSON error instead of a traceback
+async def server_error_handler(request: Request, exc):
+    # Catches any unhandled server crash and returns a clean JSON error instead of a traceback
     return JSONResponse(status_code=500,
         content={"error": "Internal server error", "details": str(exc)})
+
 
 app.include_router(ai.router)
 app.include_router(contacts.router)
@@ -84,6 +91,8 @@ app.include_router(dashboard.router)
 app.include_router(import_csv.router)
 app.include_router(face_search.router)
 
+
 @app.get("/")
-def home(): # Health check endpoint — confirms the API is running
+def home():
+    # Health check endpoint — confirms the API is running
     return {"message": "Phonebook Analytics API is running"}

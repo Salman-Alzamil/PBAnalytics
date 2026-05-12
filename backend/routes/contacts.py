@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from database import get_db
 from models import Contact, UploadedImage
@@ -9,15 +10,17 @@ from utils.image_store import compress_image
 
 router = APIRouter(prefix="/contacts", tags=["Contacts"])
 
+
 @router.get("/", response_model=list[ContactResponse])
-def get_contacts( # Returns a paginated, filtered, and sorted list of contacts
-    search: str | None =None,
+def get_contacts(
+    # Returns a paginated, filtered, and sorted list of contacts
+    search: str | None = None,
     city: str | None = None,
     sort_by: str | None = Query(None, description="Sort by 'name' or 'city'"),
     page: int = 1,
     limit: int = 10,
-    db: Session = Depends(get_db)
- ):
+    db: Session = Depends(get_db),
+):
     query = db.query(Contact)
 
     if search:
@@ -37,29 +40,36 @@ def get_contacts( # Returns a paginated, filtered, and sorted list of contacts
         query = query.order_by(Contact.city)
 
     return query.offset((page - 1) * limit).limit(limit).all()
-    
+
 
 @router.get("/duplicates", response_model=list[ContactResponse])
-def get_duplicate(db: Session = Depends(get_db)):  # Returns all contacts flagged as possible duplicates during import
+def get_duplicate(db: Session = Depends(get_db)):
+    # Returns all contacts flagged as possible duplicates during import
     return db.query(Contact).filter(Contact.possible_duplicates == True).all()
 
+
 @router.get("/{contact_id}", response_model=ContactResponse)
-def get_contact(contact_id: int, db: Session = Depends(get_db)): # Returns a single contact by ID, raises 404 if not found
+def get_contact(contact_id: int, db: Session = Depends(get_db)):
+    # Returns a single contact by ID, raises 404 if not found
     contact = db.query(Contact).filter(Contact.id == contact_id).first()
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
     return contact
 
+
 @router.post("/", response_model=ContactResponse)
-def create_contact(contact: ContactCreate, db: Session = Depends(get_db)): # Validates and inserts a new contact, returns the created record with its assigned ID
+def create_contact(contact: ContactCreate, db: Session = Depends(get_db)):
+    # Validates and inserts a new contact, returns the created record with its assigned ID
     new_contact = Contact(**contact.model_dump())
     db.add(new_contact)
     db.commit()
     db.refresh(new_contact)
     return new_contact
 
+
 @router.delete("/{contact_id}", status_code=204)
-def delete_contact(contact_id: int, db: Session = Depends(get_db)): # Deletes a contact by ID and returns 204 No Content; raises 404 if not found
+def delete_contact(contact_id: int, db: Session = Depends(get_db)):
+    # Deletes a contact by ID and returns 204 No Content; raises 404 if not found
     contact = db.query(Contact).filter(Contact.id == contact_id).first()
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
@@ -67,18 +77,21 @@ def delete_contact(contact_id: int, db: Session = Depends(get_db)): # Deletes a 
     db.commit()
     return Response()
 
+
 from pydantic import BaseModel
+
 
 class ProfilePictureUpdate(BaseModel):
     profile_picture_id: int | None
 
+
 @router.put("/{contact_id}", response_model=ContactResponse)
-def update_contact(contact_id: int, contact_update: ContactCreate, db: Session = Depends(get_db)): # Updates all fields of an existing contact; raises 404 if not found
+def update_contact(contact_id: int, contact_update: ContactCreate, db: Session = Depends(get_db)):
+    # Updates all fields of an existing contact; raises 404 if not found
     contact = db.query(Contact).filter(Contact.id == contact_id).first()
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
-    
-    # Exclude profile_picture_id from regular updates if needed, or include it if it's part of the dump
+
     update_data = contact_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(contact, key, value)
@@ -87,10 +100,13 @@ def update_contact(contact_id: int, contact_update: ContactCreate, db: Session =
     db.refresh(contact)
     return contact
 
+
 @router.patch("/{contact_id}/picture", response_model=ContactResponse)
-def update_contact_picture(contact_id: int, update_data: ProfilePictureUpdate, db: Session = Depends(get_db)):
-    from models import UploadedImage
-    from sqlalchemy import text
+def update_contact_picture(
+    contact_id: int,
+    update_data: ProfilePictureUpdate,
+    db: Session = Depends(get_db),
+):
     contact = db.query(Contact).filter(Contact.id == contact_id).first()
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
@@ -104,29 +120,37 @@ def update_contact_picture(contact_id: int, update_data: ProfilePictureUpdate, d
         try:
             from utils.face_embeddings import extract_embedding_for_profile
             from routes.face_search import _emb_str
-            image = db.query(UploadedImage).filter(UploadedImage.id == update_data.profile_picture_id).first()
+            image = db.query(UploadedImage).filter(
+                UploadedImage.id == update_data.profile_picture_id
+            ).first()
             if image:
                 embedding = extract_embedding_for_profile(image.image_bytes)
                 if embedding:
-                    db.execute(text("DELETE FROM contact_face_embeddings WHERE contact_id = :cid"), {"cid": contact.id})
                     db.execute(
-                        text("INSERT INTO contact_face_embeddings (contact_id, embedding, created_at) VALUES (:cid, CAST(:emb AS vector), NOW())"),
+                        text("DELETE FROM contact_face_embeddings WHERE contact_id = :cid"),
+                        {"cid": contact.id},
+                    )
+                    db.execute(
+                        text(
+                            "INSERT INTO contact_face_embeddings (contact_id, embedding, created_at) "
+                            "VALUES (:cid, CAST(:emb AS vector), NOW())"
+                        ),
                         {"cid": contact.id, "emb": _emb_str(embedding)},
                     )
                     db.commit()
         except Exception:
-            pass  # never block the picture save if face indexing fails
+            pass  # Never block the picture save if face indexing fails
 
     return contact
 
-@router.post("/{contact_id}/picture")
+
+@router.post("/{contact_id}/picture/upload")
 async def upload_contact_picture(
-    contact_id: int, 
-    file: UploadFile = File(...), 
-    db: Session = Depends(get_db)
+    contact_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
 ):
-    from models import UploadedImage
-    
+    """Classify an image and, if confidence >= 90%, save it and set it as the contact's profile picture."""
     contact = db.query(Contact).filter(Contact.id == contact_id).first()
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
@@ -163,7 +187,7 @@ async def upload_contact_picture(
                 compressed_size=len(compressed_bytes),
                 prediction=prediction,
                 confidence=confidence,
-                model_version="best.pt"
+                model_version="best.pt",
             )
             db.add(record)
             db.flush()
@@ -171,8 +195,31 @@ async def upload_contact_picture(
             db.commit()
             image_id = record.id
 
+            # Index the face immediately so it's searchable without a manual precompute
+            try:
+                from utils.face_embeddings import extract_embedding_for_profile
+                from routes.face_search import _emb_str
+                embedding = extract_embedding_for_profile(compressed_bytes)
+                if embedding:
+                    db.execute(
+                        text("DELETE FROM contact_face_embeddings WHERE contact_id = :cid"),
+                        {"cid": contact.id},
+                    )
+                    db.execute(
+                        text(
+                            "INSERT INTO contact_face_embeddings (contact_id, embedding, created_at) "
+                            "VALUES (:cid, CAST(:emb AS vector), NOW())"
+                        ),
+                        {"cid": contact.id, "emb": _emb_str(embedding)},
+                    )
+                    db.commit()
+            except Exception:
+                pass  # Never block the picture save if face indexing fails
+
             if old_image_id:
-                old_image = db.query(UploadedImage).filter(UploadedImage.id == old_image_id).first()
+                old_image = db.query(UploadedImage).filter(
+                    UploadedImage.id == old_image_id
+                ).first()
                 if old_image:
                     db.delete(old_image)
                     db.commit()
@@ -191,7 +238,6 @@ async def upload_contact_picture(
 
 @router.delete("/{contact_id}/picture", status_code=204)
 def delete_contact_picture(contact_id: int, db: Session = Depends(get_db)):
-    from models import UploadedImage
     contact = db.query(Contact).filter(Contact.id == contact_id).first()
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
@@ -208,7 +254,10 @@ def delete_contact_picture(contact_id: int, db: Session = Depends(get_db)):
 
     # Remove stale face embedding
     try:
-        db.execute(text("DELETE FROM contact_face_embeddings WHERE contact_id = :cid"), {"cid": contact_id})
+        db.execute(
+            text("DELETE FROM contact_face_embeddings WHERE contact_id = :cid"),
+            {"cid": contact_id},
+        )
         db.commit()
     except Exception:
         pass
