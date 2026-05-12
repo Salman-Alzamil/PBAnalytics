@@ -175,7 +175,7 @@
               </div>
               <div>
                 <p class="rc-label">No match found</p>
-                <p class="rc-sub">Best similarity was {{ (singleResult.similarity * 100).toFixed(1) }}% — below the 62% threshold</p>
+                <p class="rc-sub">Best similarity was {{ (singleResult.similarity * 100).toFixed(1) }}% — below the 40% threshold</p>
               </div>
             </div>
           </div>

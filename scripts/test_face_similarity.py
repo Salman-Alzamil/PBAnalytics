@@ -15,7 +15,7 @@ import numpy as np  # noqa: E402
 
 from utils.face_embeddings import _get_app, _pil_to_bgr  # noqa: E402
 
-TEST_DIR = REPO / "test_imgs"
+TEST_DIR = REPO / "ai" / "test images"
 REF_NAME = "download.jfif"
 
 SAME_PERSON = [
